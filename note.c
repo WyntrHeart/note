@@ -16,6 +16,7 @@ enum comm {
 };
 char* editor = NULL;
 uint subComm = helpComm;
+char* homeDirName = NULL;
 char*	notesDirName = NULL;
 char* fileArg1Name = NULL;
 char* fileArg2Name = NULL;
@@ -41,16 +42,26 @@ uint mkNoteDir(char* dirName);
 uint rmNoteDir(char* dirName);
 
 int main(int argc, char** argv) {
-	notesDirName = getenv("HOME");
-	if (notesDirName == NULL) {
+	#ifndef _WIN32
+	homeDirName = getenv("HOME");
+	if (homeDirName == NULL) {
 		puts("ERROR: environment variable 'HOME' not set\n");
 		return 1;
 	}
+	#endif
+	#ifdef _WIN32
+	homeDirName = getenv("HOME");
+	if (homeDirName == NULL) {
+		homeDirName = getenv("USERPROFILE");
+	}
+	#endif
 	editor = getenv("EDITOR");
 	if (editor == NULL) {
 		puts("ERROR: environment variable 'EDITOR' not set\n");
 		return 1;
 	}
+	notesDirName = malloc((strlen(homeDirName)+17)*sizeof(char));
+	strcpy(notesDirName, homeDirName);
 	#ifndef _WIN32
 	strcat(notesDirName, "/documents/notes");
 	#endif
@@ -104,8 +115,7 @@ int main(int argc, char** argv) {
 uint isAlphaOnly(char* str) {
 	uint retVal=0;
 	for (uint i=0; i<strlen(str); i++) {
-		retVal=(retVal | !(str[i]>>6));
-		//printf("DEBUG:\t%c\t%u\n", str[i], !(str[i]>>6) );
+		retVal=(retVal & (!!((!!((str[i]|32u)>='a')) && (!!((str[i]|32u)<='z')))));
 	}
 	return !retVal; //invert so that true=1
 }
@@ -113,20 +123,23 @@ uint isAlphaOnly(char* str) {
 char** sortStrArray(char** inArr, uint numOfStrings) {
 	char** outArr = malloc(numOfStrings*sizeof(char*));
 	for (uint i = 0; i < numOfStrings; i++) {
-		outArr[i] = malloc(255*sizeof(char));
+		outArr[i] = malloc((strlen(inArr[i])+1)*sizeof(char));
 		strcpy(outArr[i], inArr[i]);
 	}
-	char tempStr[255];
+	char* tempStr = NULL;
 	uint keepSorting = 1;
 	while (keepSorting == 1) {
 		keepSorting = 0;
 		for (uint i = 0; i < (numOfStrings-1); i++) {
 			if ( strcmp(outArr[i], outArr[i+1]) > 1 ) {
 				keepSorting = 1;
+				tempStr = malloc((strlen(outArr[i+1])+1)*sizeof(char));
 				strcpy(tempStr, outArr[i+1]);
+				outArr[i+1] = realloc(outArr[i+1], (strlen(outArr[i])+1)*sizeof(char));
 				strcpy(outArr[i+1], outArr[i]);
+				outArr[i] = realloc(outArr[i], (strlen(tempStr)+1)*sizeof(char));
 				strcpy(outArr[i], tempStr);
-				strcpy(tempStr, "");
+				free(tempStr);
 			}
 		}
 	}
@@ -198,7 +211,7 @@ uint printHelp() {
 "	mv		|	Move or rename ARG1.txt to ARG2.txt\n"
 "	mkdir	|	Create subdir named ARG1\n"
 "	rmdir	|	Remove subdir named ARG1\n";
-	printf("%s", helpText);
+	puts(helpText);
 	return 0;
 }
 
@@ -219,7 +232,7 @@ uint showNote() {
 		}
 		fclose (arg1File);
 	}
-	printf("%s", noteContent);
+	puts(noteContent);
 	return retVal;
 }
 
@@ -236,7 +249,7 @@ uint lsNote(char* searchStr) {
 	uint i = 0;
 	while ((entry = readdir(notesDir)) != NULL) {
 		if (entry) {
-			fileNames[i]=malloc(255*sizeof(char));
+			fileNames[i]=malloc((strlen(entry->d_name)+1)*sizeof(char));
 			strcpy(fileNames[i], entry->d_name);
 			i++;
 		}
@@ -245,7 +258,6 @@ uint lsNote(char* searchStr) {
 	for (uint i = 0; i < numOfFiles; i++) {
 		char fileExt[5];
 		sprintf(fileExt, "%.*s", 4, sortedFileNames[i]+strlen(sortedFileNames[i])-4);
-		//printf("DEBUG: fileExt=%s\n", fileExt);
 		if (strcmp(fileExt, ".txt")) {
 			strcpy(sortedFileNames[i], "");
 		}
@@ -253,7 +265,7 @@ uint lsNote(char* searchStr) {
 			sortedFileNames[i][strlen(sortedFileNames[i])-4]='\0';
 		}
 	}
-	for (uint i=0; i<numOfFiles; i++) {
+	for (uint i=0; i < numOfFiles; i++) {
 		if (strcmp(sortedFileNames[i], "")) {
 			puts(sortedFileNames[i]);
 		}
@@ -262,7 +274,7 @@ uint lsNote(char* searchStr) {
 }
 
 uint editNote() {
-	char editComm[255] = "";
+	char* editComm = malloc((strlen(editor)+strlen(fileArg1Name)+2)*sizeof(char));
 	sprintf(editComm, "%s '%s'", editor, fileArg1Name);
 	return system(editComm);
 }
