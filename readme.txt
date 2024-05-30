@@ -17,3 +17,5 @@ subcommands:
    mv    |  Move or rename ARG1.txt to ARG2.txt
    mkdir |  Create subdir named ARG1
    rmdir |  Remove subdir named ARG1
+
+This software is licensed under the GNU GPL version 3
