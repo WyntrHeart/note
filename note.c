@@ -2,19 +2,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <alpha2int.h>
+#include <sys/stat.h>
+#include "./include/alpha2int.h"
 
 typedef unsigned int uint;
 typedef unsigned long ulong;
 
 // Global data
 enum comm {
-	help=536744u, ls=620u, add=4225u, edit=664709u, 
-	rm=434u, cp=515u, mv=717u, show=769299u,
-	mkdir=19173741u, rmdir=19173810u
+	helpComm=536744u, lsComm=620u, addComm=4225u, editComm=664709u, 
+	rmComm=434u, cpComm=515u, mvComm=717u, showComm=769299u,
+	mkdirComm=19173741u, rmdirComm=19173810u
 };
 char* editor = NULL;
-uint subComm = help;
+uint subComm = helpComm;
 char*	notesDirName = NULL;
 char* fileArg1Name = NULL;
 char* fileArg2Name = NULL;
@@ -23,10 +24,11 @@ FILE* arg1File = NULL;
 FILE* arg2File = NULL;
 
 // Function prototype declarations
-uint readInput(int argc, char** argv);
 uint isAlphaOnly(char* str);
 uint isDigitOnly(char* str);
 char** sortStrArray(char** inArr, uint numOfStrings);
+char* fullPathOfFileName(char* fileName);
+uint readInput(int argc, char** argv);
 uint printHelp();
 uint showNote();
 uint lsNote(char* searchStr);
@@ -49,7 +51,12 @@ int main(int argc, char** argv) {
 		puts("ERROR: environment variable 'EDITOR' not set\n");
 		return 1;
 	}
+	#ifndef _WIN32
 	strcat(notesDirName, "/documents/notes");
+	#endif
+	#ifdef _WIN32
+	strcat(notesDirName, "\\documents\\notes");
+	#endif
 	notesDir = opendir(notesDirName);
 	if (notesDir == NULL) {
 		printf("ERROR: Could not open notes directory '%s'\n", notesDirName);
@@ -57,34 +64,34 @@ int main(int argc, char** argv) {
 	}
 	readInput(argc, argv);
 	switch (subComm) {
-		case show:
+		case showComm:
 			showNote();
 			break;
-		case help:
+		case helpComm:
 			printHelp();
 			break;
-		case ls:
+		case lsComm:
 			lsNote(NULL);
 			break;
-		case add:
+		case addComm:
 			printf("addNote()\n");
 			break;
-		case edit:
+		case editComm:
 			editNote();
 			break;
-		case rm:
+		case rmComm:
 			printf("rmNote()\n");
 			break;
-		case cp:
+		case cpComm:
 			printf("cpNote()\n");
 			break;
-		case mv:
+		case mvComm:
 			printf("mvNote()\n");
 			break;
-		case mkdir:
+		case mkdirComm:
 			printf("mkNoteDir()\n");
 			break;
-		case rmdir:
+		case rmdirComm:
 			printf("rmNoteDir()\n");
 			break;
 		default:
@@ -92,57 +99,6 @@ int main(int argc, char** argv) {
 			break;
 	}
 	return 0;
-}
-
-uint readInput(int argc, char** argv) {
-	uint retVal=0;
-	switch (argc) {
-		case 2:
-			fileArg1Name=malloc((strlen(notesDirName)+strlen(argv[1])+1)*sizeof(char));
-			strcpy(fileArg1Name, notesDirName);
-			strcat(fileArg1Name, "/");
-			strcat(fileArg1Name, argv[1]);
-			strcat(fileArg1Name, ".txt");
-			if ((arg1File = fopen(fileArg1Name,"r+"))!=NULL) {
-				subComm=show;
-			}
-			else if (isAlphaOnly(argv[1])) {
-				subComm=alpha2int(argv[1]);
-			}
-			break;
-		case 3:
-			if (isAlphaOnly(argv[1])) {
-				subComm=alpha2int(argv[1]);
-			}
-			fileArg1Name=malloc((strlen(notesDirName)+strlen(argv[2])+1)*sizeof(char));
-			strcpy(fileArg1Name, notesDirName);
-			strcat(fileArg1Name, "/");
-			strcat(fileArg1Name, argv[2]);
-			strcat(fileArg1Name, ".txt");
-			arg1File = fopen(fileArg1Name,"r+");
-			retVal = !!(arg1File == NULL);
-			break;
-		case 4:
-			if (isAlphaOnly(argv[1])) {
-				subComm=alpha2int(argv[1]);
-			}
-			fileArg1Name=malloc((strlen(notesDirName)+strlen(argv[2])+1)*sizeof(char));
-			strcpy(fileArg1Name, notesDirName);
-			strcat(fileArg1Name, "/");
-			strcat(fileArg1Name, argv[2]);
-			strcat(fileArg1Name, ".txt");
-			arg1File = fopen(fileArg1Name,"r+");
-			fileArg2Name=malloc((strlen(notesDirName)+strlen(argv[3])+1)*sizeof(char));
-			strcpy(fileArg2Name, notesDirName);
-			strcat(fileArg2Name, "/");
-			strcat(fileArg2Name, argv[3]);
-			strcat(fileArg2Name, ".txt");
-			arg2File = fopen(fileArg2Name,"r+");
-			retVal = !!(arg1File == NULL);
-			retVal = !!(arg2File == NULL);
-			break;
-	}
-	return retVal;
 }
 
 uint isAlphaOnly(char* str) {
@@ -175,6 +131,56 @@ char** sortStrArray(char** inArr, uint numOfStrings) {
 		}
 	}
 	return outArr;
+}
+
+char* fullPathOfFileName(char* fileName) {
+	char* fullPath = NULL;
+	fullPath = malloc((strlen(notesDirName)+strlen(fileName)+1)*sizeof(char));
+	strcpy(fullPath, notesDirName);
+	#ifndef _WIN32
+	strcat(fullPath, "/");
+	#endif
+	#ifdef _WIN32
+	strcat(fullPath, "\\");
+	#endif
+	strcat(fullPath, fileName);
+	strcat(fullPath, ".txt");
+	return fullPath;
+}
+
+uint readInput(int argc, char** argv) {
+	uint retVal=0;
+	switch (argc) {
+		case 2:
+			fileArg1Name = fullPathOfFileName(argv[1]);
+			if ((arg1File = fopen(fileArg1Name,"r+"))!=NULL) {
+				subComm=showComm;
+			}
+			else if (isAlphaOnly(argv[1])) {
+				subComm=alpha2int(argv[1]);
+			}
+			break;
+		case 3:
+			if (isAlphaOnly(argv[1])) {
+				subComm=alpha2int(argv[1]);
+			}
+			fileArg1Name = fullPathOfFileName(argv[2]);
+			arg1File = fopen(fileArg1Name,"r+");
+			retVal = !!(arg1File == NULL);
+			break;
+		case 4:
+			if (isAlphaOnly(argv[1])) {
+				subComm=alpha2int(argv[1]);
+			}
+			fileArg1Name = fullPathOfFileName(argv[2]);
+			arg1File = fopen(fileArg1Name,"r+");
+			fileArg2Name = fullPathOfFileName(argv[3]);
+			arg2File = fopen(fileArg2Name,"r+");
+			retVal = !!(arg1File == NULL);
+			retVal = !!(arg2File == NULL);
+			break;
+	}
+	return retVal;
 }
 
 uint printHelp() {
@@ -220,25 +226,18 @@ uint showNote() {
 uint lsNote(char* searchStr) {
 	char** fileNames = NULL;
 	struct dirent* entry = NULL;
+	struct stat statBuffer;
 	uint numOfFiles = 0;
 	while ((entry = readdir(notesDir)) != NULL) {
-		if (entry->d_type == DT_REG || entry->d_type == DT_DIR) {
-			numOfFiles++;
-		}
+		numOfFiles++;
 	}
-	fileNames=malloc(numOfFiles*sizeof(char*));
+	fileNames = malloc(numOfFiles*sizeof(char*));
 	rewinddir(notesDir);
 	uint i = 0;
 	while ((entry = readdir(notesDir)) != NULL) {
-		if (entry->d_type == DT_REG) {
+		if (entry) {
 			fileNames[i]=malloc(255*sizeof(char));
 			strcpy(fileNames[i], entry->d_name);
-			i++;
-		}
-		if (entry->d_type == DT_DIR) {
-			fileNames[i]=malloc(255*sizeof(char));
-			strcpy(fileNames[i], entry->d_name);
-			strcat(fileNames[i], "/");
 			i++;
 		}
 	}
