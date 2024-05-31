@@ -2,7 +2,7 @@ A simple cli program to manage plain text notes. Notes are stored in $HOME/docum
 
 Builds with GCC. Uses dirent.h, so MSVC's standard library won't work.
 
-NOTE: Only help, ls, and edit subcommands are currently implemented, and ls doesn't list subdirs yet.
+NOTE: Only help, ls, and edit subcommands are currently implemented, and ls doesn't list subdirs yet. Also, I am a beginner programmer so please use this software with caution. I am not responsible if it deletes all you bank info, sponfaneously combusts your computer, or if reading my awful code causes you to have an aneurism.
 
 usage: note NOTE|SUBCOMMAND [ARG1 [ARG2]]
    Display NOTE or do SUBCOMMAND
