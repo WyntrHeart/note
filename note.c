@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
 		puts("ERROR: environment variable 'EDITOR' not set\n");
 		return 1;
 	}
-	notesDirName = malloc((strlen(homeDirName)+17)*sizeof(char));
+	notesDirName = malloc((strlen(homeDirName)+19)*sizeof(char));
 	strcpy(notesDirName, homeDirName);
 	#ifndef _WIN32
 	strcat(notesDirName, "/documents/notes");
@@ -148,7 +148,7 @@ char** sortStrArray(char** inArr, uint numOfStrings) {
 
 char* fullPathOfFileName(char* fileName) {
 	char* fullPath = NULL;
-	fullPath = malloc((strlen(notesDirName)+strlen(fileName)+1)*sizeof(char));
+	fullPath = malloc((strlen(notesDirName)+strlen(fileName)+3)*sizeof(char));
 	strcpy(fullPath, notesDirName);
 	#ifndef _WIN32
 	strcat(fullPath, "/");
@@ -275,6 +275,6 @@ uint lsNote(char* searchStr) {
 
 uint editNote() {
 	char* editComm = malloc((strlen(editor)+strlen(fileArg1Name)+2)*sizeof(char));
-	sprintf(editComm, "%s '%s'", editor, fileArg1Name);
+	sprintf(editComm, "%s \"%s\"", editor, fileArg1Name);
 	return system(editComm);
 }
