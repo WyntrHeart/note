@@ -148,7 +148,7 @@ char** sortStrArray(char** inArr, uint numOfStrings) {
 
 char* fullPathOfFileName(char* fileName) {
 	char* fullPath = NULL;
-	fullPath = malloc((strlen(notesDirName)+strlen(fileName)+3)*sizeof(char));
+	fullPath = malloc((strlen(notesDirName)+strlen(fileName)+6)*sizeof(char));
 	strcpy(fullPath, notesDirName);
 	#ifndef _WIN32
 	strcat(fullPath, "/");
