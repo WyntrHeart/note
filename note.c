@@ -9,6 +9,8 @@ typedef unsigned int uint;
 typedef unsigned long ulong;
 
 // Global data
+// "comm" is used to convert subcommand arguments into integers that can be
+// used with a switch statement
 enum comm {
 	helpComm=536744u, lsComm=620u, addComm=4225u, editComm=664709u, 
 	rmComm=434u, cpComm=515u, mvComm=717u, showComm=769299u,
@@ -16,20 +18,19 @@ enum comm {
 };
 
 // Function prototype declarations
-uint isAlphaOnly(char* str);
 char** sortStrArray(char** inArr, uint numOfStrings);
 char* fullPathOfFileName(char* fileName, char* notesDirName);
-uint readInput(int argc, char** argv, uint* subComm, FILE** arg1File, FILE** arg2File, char** fileArg1Name, char** fileArg2Name, char** notesDirName);
-uint printHelp();
+void readInput(int argc, char** argv, uint* subComm, FILE** arg1File, FILE** arg2File, char** fileArg1Name, char** fileArg2Name, char** notesDirName);
+void printHelp();
 uint showNote(FILE* arg1File);
 uint lsNote(DIR* notesDir);
-uint addNote();
+// uint addNote();
 uint editNote(char* fileArg1Name);
-uint rmNote();
-uint cpNote();
-uint mvNote();
-uint mkNoteDir();
-uint rmNoteDir();
+// uint rmNote();
+// uint cpNote();
+// uint mvNote();
+// uint mkNoteDir();
+// uint rmNoteDir();
 
 int main(int argc, char** argv) {
 	char* fileArg1Name = NULL;
@@ -53,20 +54,27 @@ int main(int argc, char** argv) {
 	if (homeDirName == NULL) {
 		homeDirName = getenv("USERPROFILE");
 	}
+	if (homeDirName == NULL) {
+		puts("ERROR: environment variables 'HOME' and 'USERPROFILE' not set\n");
+		return 1;
+	}
 	#endif
 	notesDirName = malloc((strlen(homeDirName)+19)*sizeof(char));
 	strcpy(notesDirName, homeDirName);
-	#ifndef _WIN32
+	// Convert Windows backslashes to normal forward slashes
+	for (uint i = 0; i <= strlen(notesDirName); i++) {
+		if (notesDirName[i] == '\\') {
+			notesDirName[i] = '/';
+		}
+	}
 	strcat(notesDirName, "/documents/notes");
-	#endif
-	#ifdef _WIN32
-	strcat(notesDirName, "\\documents\\notes");
-	#endif
 	notesDir = opendir(notesDirName);
 	if (notesDir == NULL) {
 		printf("ERROR: Could not open notes directory '%s'\n", notesDirName);
 		return 2;
 	}
+	
+	// readInput() parses the command line args and sets the main vars for the program 
 	readInput(argc, argv, &subComm, &arg1File, &arg2File, &fileArg1Name, &fileArg2Name, &notesDirName);
 	switch (subComm) {
 		case showComm:
@@ -106,14 +114,7 @@ int main(int argc, char** argv) {
 	return 0;
 }
 
-uint isAlphaOnly(char* str) {
-	uint retVal=0;
-	for (uint i=0; i<strlen(str); i++) {
-		retVal=(retVal & (!!((!!((str[i]|32u)>='a')) && (!!((str[i]|32u)<='z')))));
-	}
-	return !retVal; //invert so that true=1
-}
-
+// Bubble sort
 char** sortStrArray(char** inArr, uint numOfStrings) {
 	char** outArr = malloc(numOfStrings*sizeof(char*));
 	for (uint i = 0; i < numOfStrings; i++) {
@@ -144,54 +145,39 @@ char* fullPathOfFileName(char* fileName, char* notesDirName) {
 	char* fullPath = NULL;
 	fullPath = malloc((strlen(notesDirName)+strlen(fileName)+6)*sizeof(char));
 	strcpy(fullPath, notesDirName);
-	#ifndef _WIN32
 	strcat(fullPath, "/");
-	#endif
-	#ifdef _WIN32
-	strcat(fullPath, "\\");
-	#endif
 	strcat(fullPath, fileName);
 	strcat(fullPath, ".txt");
 	return fullPath;
 }
 
-uint readInput(int argc, char** argv, uint* subComm, FILE** arg1File, FILE** arg2File, char** fileArg1Name, char** fileArg2Name, char** notesDirName) {
-	uint retVal=0;
+void readInput(int argc, char** argv, uint* subComm, FILE** arg1File, FILE** arg2File, char** fileArg1Name, char** fileArg2Name, char** notesDirName) {
 	switch (argc) {
 		case 2:
 			*fileArg1Name = fullPathOfFileName(argv[1], *notesDirName);
-			if ((*arg1File = fopen(*fileArg1Name,"r+"))!=NULL) {
+			if ((*arg1File = fopen(*fileArg1Name,"r+")) != NULL) {
 				*subComm=showComm;
 			}
-			else if (isAlphaOnly(argv[1])) {
-				*subComm=alpha2int(argv[1]);
-			}
+			else *subComm=alpha2int(argv[1]);
 			break;
 		case 3:
-			if (isAlphaOnly(argv[1])) {
-				*subComm=alpha2int(argv[1]);
-			}
+			*subComm=alpha2int(argv[1]);
 			*fileArg1Name = fullPathOfFileName(argv[2], *notesDirName);
 			*arg1File = fopen(*fileArg1Name,"r+");
-			retVal = !(*arg1File);
 			break;
 		case 4:
-			if (isAlphaOnly(argv[1])) {
-				*subComm=alpha2int(argv[1]);
-			}
+			*subComm=alpha2int(argv[1]);
 			*fileArg1Name = fullPathOfFileName(argv[2], *notesDirName);
 			*arg1File = fopen(*fileArg1Name,"r+");
 			*fileArg2Name = fullPathOfFileName(argv[3], *notesDirName);
 			*arg2File = fopen(*fileArg2Name,"r+");
-			retVal = !(*arg1File);
-			retVal = retVal | (!(*arg2File));
 			break;
 	}
-	return retVal;
+	return;
 }
 
-uint printHelp() {
-	char* helpText=
+void printHelp() {
+	puts(
 "usage: note NOTE|SUBCOMMAND [ARG1 [ARG2]]\n"
 "	Display NOTE or do SUBCOMMAND\n"
 "subcommands:\n"
@@ -204,9 +190,8 @@ uint printHelp() {
 "	cp		|	Copy ARG1.txt to ARG2.txt\n"
 "	mv		|	Move or rename ARG1.txt to ARG2.txt\n"
 "	mkdir	|	Create subdir named ARG1\n"
-"	rmdir	|	Remove subdir named ARG1";
-	puts(helpText);
-	return 0;
+"	rmdir	|	Remove subdir named ARG1");
+	return;
 }
 
 uint showNote(FILE* arg1File) {
@@ -215,8 +200,8 @@ uint showNote(FILE* arg1File) {
 	ulong bytesRead = 0;
 	if (arg1File) {
 		fseek(arg1File, 0, SEEK_END);
-		length = ftell (arg1File);
-		fseek (arg1File, 0, SEEK_SET);
+		length = ftell(arg1File);
+		fseek(arg1File, 0, SEEK_SET);
 		noteContent = malloc(length+1);
 		if (noteContent) {
 			bytesRead = fread (noteContent, 1, length, arg1File);
