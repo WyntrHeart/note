@@ -128,13 +128,9 @@ char** sortStrArray(char** inArr, uint numOfStrings) {
 		for (uint i = 0; i < (numOfStrings-1); i++) {
 			if ( strcmp(outArr[i], outArr[i+1]) > 1 ) {
 				keepSorting = 1;
-				tempStr = malloc((strlen(outArr[i+1])+1)*sizeof(char));
-				strcpy(tempStr, outArr[i+1]);
-				outArr[i+1] = realloc(outArr[i+1], (strlen(outArr[i])+1)*sizeof(char));
-				strcpy(outArr[i+1], outArr[i]);
-				outArr[i] = realloc(outArr[i], (strlen(tempStr)+1)*sizeof(char));
-				strcpy(outArr[i], tempStr);
-				free(tempStr);
+				tempStr = outArr[i+1];
+				outArr[i+1] = outArr[i];
+				outArr[i] = tempStr;
 			}
 		}
 	}
