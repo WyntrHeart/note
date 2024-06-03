@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include <sys/stat.h>
+#include <sys/stat.h>
 #include "./include/alpha2int.h"
 
 typedef unsigned int uint;
@@ -23,7 +23,7 @@ char* fullPathOfFileName(char* fileName, char* notesDirName);
 void readInput(int argc, char** argv, uint* subComm, FILE** arg1File, FILE** arg2File, char** fileArg1Name, char** fileArg2Name, char** notesDirName);
 void printHelp();
 uint showNote(FILE* arg1File);
-uint lsNote(DIR* notesDir);
+uint lsNote(DIR* notesDir, char* notesDirName);
 // uint addNote();
 uint editNote(char* fileArg1Name);
 // uint rmNote();
@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
 			printHelp();
 			break;
 		case lsComm:
-			lsNote(notesDir);
+			lsNote(notesDir, notesDirName);
 			break;
 		case addComm:
 			printf("addNote()\n");
@@ -140,10 +140,7 @@ char** sortStrArray(char** inArr, uint numOfStrings) {
 char* fullPathOfFileName(char* fileName, char* notesDirName) {
 	char* fullPath = NULL;
 	fullPath = malloc((strlen(notesDirName)+strlen(fileName)+6)*sizeof(char));
-	strcpy(fullPath, notesDirName);
-	strcat(fullPath, "/");
-	strcat(fullPath, fileName);
-	strcat(fullPath, ".txt");
+	sprintf(fullPath, "%s/%s.txt", notesDirName, fileName);
 	return fullPath;
 }
 
@@ -209,15 +206,20 @@ uint showNote(FILE* arg1File) {
 	return (uint)(length-bytesRead);
 }
 
-uint lsNote(DIR* notesDir) {
+uint lsNote(DIR* notesDir, char* notesDirName) {
 	char** fileNames = NULL;
+	char* statFileName = NULL;
+	char fileExt[5] = {0,0,0,0,0};
 	struct dirent* entry = NULL;
-	//struct stat statBuffer;
+	struct stat statBuf;
+	uint isTxtFile = 0;
 	uint numOfFiles = 0;
+	// Count files so we can allocate enough pointers for the filenames
 	while ((entry = readdir(notesDir)) != NULL) {
 		numOfFiles++;
 	}
 	fileNames = malloc(numOfFiles*sizeof(char*));
+	// Reread the dir to record the names
 	rewinddir(notesDir);
 	uint i = 0;
 	while ((entry = readdir(notesDir)) != NULL) {
@@ -227,19 +229,33 @@ uint lsNote(DIR* notesDir) {
 			i++;
 		}
 	}
+	// Sort the file names alphabetically
 	char** sortedFileNames = sortStrArray(fileNames, numOfFiles);
 	for (uint i = 0; i < numOfFiles; i++) {
-		char fileExt[5];
+		// Construct full file path for stat()
+		statFileName = realloc(statFileName, (strlen(sortedFileNames[i])+strlen(notesDirName)+1)*sizeof(char));
+		sprintf(statFileName, "%s/%s", notesDirName, sortedFileNames[i]);
+		stat(statFileName, &statBuf);
+		// Check file extension to identify txt files
 		sprintf(fileExt, "%.*s", 4, sortedFileNames[i]+strlen(sortedFileNames[i])-4);
-		if (strcmp(fileExt, ".txt")) {
+		isTxtFile = !strcmp(fileExt, ".txt");
+		// Append a "/" to the names of directories
+		if ( (statBuf.st_mode & S_IFMT) == S_IFDIR) {
+			sortedFileNames[i] = realloc(sortedFileNames[i], (strlen(sortedFileNames[i])+2)*sizeof(char));
+			strcat(sortedFileNames[i], "/");
+		}
+		// Hide extension on note names
+		else if (isTxtFile) {
+			sortedFileNames[i][strlen(sortedFileNames[i])-4]='\0';
+		}
+		// Hide files that aren't txt or dir
+		else {
 			free(sortedFileNames[i]);
 			sortedFileNames[i] = NULL;
 		}
-		else {
-			sortedFileNames[i][strlen(sortedFileNames[i])-4]='\0';
-		}
 	}
-	for (uint i=0; i < numOfFiles; i++) {
+	// Start at 2 to hide "." and ".."
+	for (uint i=2; i < numOfFiles; i++) {
 		if (sortedFileNames[i]) {
 			puts(sortedFileNames[i]);
 		}
