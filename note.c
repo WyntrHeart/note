@@ -13,17 +13,16 @@ typedef unsigned long ulong;
 // used with a switch statement
 enum comm {
 	helpComm=536744u, lsComm=620u, addComm=4225u, editComm=664709u, 
-	rmComm=434u, cpComm=515u, mvComm=717u, showComm=769299u,
+	rmComm=434u, cpComm=515u, mvComm=717u, /*showComm=769299u,*/
 	mkdirComm=19173741u, rmdirComm=19173810u
 };
 
 // Function prototype declarations
 char** sortStrArray(char** inArr, uint numOfStrings);
-char* fullPathOfFileName(char* fileName, char* notesDirName);
-void readInput(int argc, char** argv, uint* subComm, FILE** arg1File, FILE** arg2File, char** fileArg1Name, char** fileArg2Name, char** notesDirName);
+// char* fullPathOfFileName(char* fileName, char* notesDirPath);
 void printHelp();
-uint showNote(FILE* arg1File);
-uint lsNote(DIR* notesDir, char* notesDirName);
+uint showNote(char* notePath);
+uint lsNote(int argc, char** argv, char* notesDirPath);
 // uint addNote();
 uint editNote(char* fileArg1Name);
 // uint rmNote();
@@ -33,64 +32,57 @@ uint editNote(char* fileArg1Name);
 // uint rmNoteDir();
 
 int main(int argc, char** argv) {
-	char* fileArg1Name = NULL;
-	char* fileArg2Name = NULL;
-	uint subComm = helpComm;
-	char* homeDirName = NULL;
-	char*	notesDirName = NULL;
-	DIR* notesDir = NULL;
-	FILE* arg1File = NULL;
-	FILE* arg2File = NULL;
+	uint	subComm			= helpComm;
+	char*	homeDirPath		= NULL;
+	char*	notesDirPath	= NULL;
+	struct	stat statBuf; 
 
 	#ifndef _WIN32
-	homeDirName = getenv("HOME");
-	if (homeDirName == NULL) {
+	homeDirPath = getenv("HOME");
+	if (homeDirPath == NULL) {
 		puts("ERROR: environment variable 'HOME' not set\n");
 		return 1;
 	}
 	#endif
 	#ifdef _WIN32
-	homeDirName = getenv("HOME");
-	if (homeDirName == NULL) {
-		homeDirName = getenv("USERPROFILE");
+	homeDirPath = getenv("HOME");
+	if (homeDirPath == NULL) {
+		homeDirPath = getenv("USERPROFILE");
 	}
-	if (homeDirName == NULL) {
-		puts("ERROR: environment variables 'HOME' and 'USERPROFILE' not set\n");
+	if (homeDirPath == NULL) {
+		puts("ERROR: environment variables 'HOME' and 'USERPROFILE' not set");
 		return 1;
 	}
 	#endif
-	notesDirName = malloc((strlen(homeDirName)+19)*sizeof(char));
-	strcpy(notesDirName, homeDirName);
+	notesDirPath = malloc((strlen(homeDirPath)+18)*sizeof(char));
+	strcpy(notesDirPath, homeDirPath);
 	// Convert Windows backslashes to normal forward slashes
-	for (uint i = 0; i <= strlen(notesDirName); i++) {
-		if (notesDirName[i] == '\\') {
-			notesDirName[i] = '/';
+	for (uint i = 0; i <= strlen(notesDirPath); i++) {
+		if (notesDirPath[i] == '\\') {
+			notesDirPath[i] = '/';
 		}
 	}
-	strcat(notesDirName, "/documents/notes");
-	notesDir = opendir(notesDirName);
-	if (notesDir == NULL) {
-		printf("ERROR: Could not open notes directory '%s'\n", notesDirName);
-		return 2;
+	strcat(notesDirPath, "/documents/notes");
+
+	// Read first argument as subcommand
+	if ( argc > 1 ) {
+		subComm = alpha2int(argv[1]);
 	}
-	
-	// readInput() parses the command line args and sets the main vars for the program 
-	readInput(argc, argv, &subComm, &arg1File, &arg2File, &fileArg1Name, &fileArg2Name, &notesDirName);
+	else if ( argc > 4 ) {
+		fputs("ERROR: too many arguments", stderr);
+	}
 	switch (subComm) {
-		case showComm:
-			showNote(arg1File);
-			break;
 		case helpComm:
 			printHelp();
 			break;
 		case lsComm:
-			lsNote(notesDir, notesDirName);
+			lsNote(argv, notesDirPath);
 			break;
 		case addComm:
 			printf("addNote()\n");
 			break;
 		case editComm:
-			editNote(fileArg1Name);
+			editNote(argv, notesDirPath);
 			break;
 		case rmComm:
 			printf("rmNote()\n");
@@ -108,7 +100,13 @@ int main(int argc, char** argv) {
 			printf("rmNoteDir()\n");
 			break;
 		default:
-			printHelp();
+			// First argument isn't a subcommand. Is it a file?
+			char* filePath = malloc((strlen(notesDirPath)+strlen(argv[1])+6)*sizeof(char));
+			sprintf(filePath, "%s/%s.txt", notesDirPath, argv[1]);
+			if ( stat(filePath, &statBuf) == 0 ) {
+				showNote(filePath)
+			}
+			else printHelp();
 			break;
 	}
 	return 0;
@@ -137,88 +135,85 @@ char** sortStrArray(char** inArr, uint numOfStrings) {
 	return outArr;
 }
 
-char* fullPathOfFileName(char* fileName, char* notesDirName) {
-	char* fullPath = NULL;
-	fullPath = malloc((strlen(notesDirName)+strlen(fileName)+6)*sizeof(char));
-	sprintf(fullPath, "%s/%s.txt", notesDirName, fileName);
-	return fullPath;
-}
-
-void readInput(int argc, char** argv, uint* subComm, FILE** arg1File, FILE** arg2File, char** fileArg1Name, char** fileArg2Name, char** notesDirName) {
-	switch (argc) {
-		case 2:
-			*fileArg1Name = fullPathOfFileName(argv[1], *notesDirName);
-			if ((*arg1File = fopen(*fileArg1Name,"r+")) != NULL) {
-				*subComm=showComm;
-			}
-			else *subComm=alpha2int(argv[1]);
-			break;
-		case 3:
-			*subComm=alpha2int(argv[1]);
-			*fileArg1Name = fullPathOfFileName(argv[2], *notesDirName);
-			*arg1File = fopen(*fileArg1Name,"r+");
-			break;
-		case 4:
-			*subComm=alpha2int(argv[1]);
-			*fileArg1Name = fullPathOfFileName(argv[2], *notesDirName);
-			*arg1File = fopen(*fileArg1Name,"r+");
-			*fileArg2Name = fullPathOfFileName(argv[3], *notesDirName);
-			*arg2File = fopen(*fileArg2Name,"r+");
-			break;
-	}
-	return;
-}
-
 void printHelp() {
 	puts(
 "usage: note NOTE|SUBCOMMAND [ARG1 [ARG2]]\n"
-"	Display NOTE or do SUBCOMMAND\n"
+"    Display NOTE or do SUBCOMMAND\n"
 "subcommands:\n"
-"	help	|	Display this help text\n"
-"	ls		|	List notes and subdirs in note directory. If ARG1\n"
-"				is a subdir list notes/subdirs inside it.\n"
-"	add	|	Add a new note named ARG1.txt\n"
-"	edit	|	Open ARG1.txt with $EDITOR\n"
-"	rm		|	Remove ARG1.txt\n"
-"	cp		|	Copy ARG1.txt to ARG2.txt\n"
-"	mv		|	Move or rename ARG1.txt to ARG2.txt\n"
-"	mkdir	|	Create subdir named ARG1\n"
-"	rmdir	|	Remove subdir named ARG1");
+"    help   Display this help text\n"
+"    ls     List notes and subdirs in note directory. If ARG1 is a\n"
+"           subdir list notes/subdirs inside it.\n"
+"    add    Append the string ARG2 to a new line at the end of ARG1.txt\n"
+"    edit   Open ARG1.txt with $EDITOR\n"
+"    rm     Remove ARG1.txt\n"
+"    cp     Copy ARG1.txt to ARG2.txt\n"
+"    mv     Move or rename ARG1.txt to ARG2.txt\n"
+"    mkdir  Create subdir named ARG1\n"
+"    rmdir  Remove subdir named ARG1");
 	return;
 }
 
-uint showNote(FILE* arg1File) {
+uint showNote(char* notePath) {
 	char* noteContent = NULL;
+	FILE* noteFile = fopen(notePath, "r+");
 	ulong length = 0;
 	ulong bytesRead = 0;
-	if (arg1File) {
-		fseek(arg1File, 0, SEEK_END);
-		length = ftell(arg1File);
-		fseek(arg1File, 0, SEEK_SET);
+	if (noteFile) {
+		fseek(noteFile, 0, SEEK_END);
+		length = ftell(noteFile);
+		fseek(noteFile, 0, SEEK_SET);
 		noteContent = malloc(length+1);
 		if (noteContent) {
-			bytesRead = fread (noteContent, 1, length, arg1File);
+			bytesRead = fread (noteContent, 1, length, noteFile);
 			noteContent[length]='\0';
 		}
-		fclose (arg1File);
+		fclose (noteFile);
 	}
 	fputs(noteContent, stdout);
 	return (uint)(length-bytesRead);
 }
 
-uint lsNote(DIR* notesDir, char* notesDirName) {
+uint lsNote(int argc, char** argv, char* notesDirPath) {
+	DIR* notesDir = NULL;
 	char** fileNames = NULL;
-	char* statFileName = NULL;
+	char* statFilePath = NULL;
+	char* lsDir = NULL;
 	char fileExt[5] = {0,0,0,0,0};
 	struct dirent* entry = NULL;
 	struct stat statBuf;
 	uint isTxtFile = 0;
 	uint numOfFiles = 0;
+
+	// Check if argument to ls subcommand is a directory
+	if ( argc == 3 ) {
+		lsDir = malloc((strlen(notesDirPath)+strlen(argv[2])+2)*sizeof(char));
+		sprintf(lsDir, "%s/%s", notesDirPath, argv[2]);
+		if ( stat(lsDir, statBuf) != 0 ) {
+			fprintf(stderr, "ERROR: Cannot open directory '%s'", lsDir);
+			return 2;
+		}
+	}
+	else if ( argc > 3 ) {
+		fputs("ERROR: Too many arguments to subcommand 'ls'", stderr);
+		return 3;
+	}
+	else {
+		lsDir = malloc((strlen(notesDirPath)+1)*sizeof(char));
+	}
+
+	// Open the directory to list
+	notesDir = opendir(lsDir);
+	if ( notesDir == NULL ) {
+		fprintf(stderr, "ERROR: Cannot open directory '%s'", lsDir);
+		return 2;
+	}
+
 	// Count files so we can allocate enough pointers for the filenames
 	while ((entry = readdir(notesDir)) != NULL) {
 		numOfFiles++;
 	}
 	fileNames = malloc(numOfFiles*sizeof(char*));
+
 	// Reread the dir to record the names
 	rewinddir(notesDir);
 	uint i = 0;
@@ -229,13 +224,16 @@ uint lsNote(DIR* notesDir, char* notesDirName) {
 			i++;
 		}
 	}
+
 	// Sort the file names alphabetically
 	char** sortedFileNames = sortStrArray(fileNames, numOfFiles);
+
+	// Filter the file names by type
 	for (uint i = 0; i < numOfFiles; i++) {
 		// Construct full file path for stat()
-		statFileName = realloc(statFileName, (strlen(sortedFileNames[i])+strlen(notesDirName)+1)*sizeof(char));
-		sprintf(statFileName, "%s/%s", notesDirName, sortedFileNames[i]);
-		stat(statFileName, &statBuf);
+		statFilePath = realloc(statFilePath, (strlen(sortedFileNames[i])+strlen(notesDirPath)+1)*sizeof(char));
+		sprintf(statFilePath, "%s/%s", notesDirPath, sortedFileNames[i]);
+		stat(statFilePath, &statBuf);
 		// Check file extension to identify txt files
 		sprintf(fileExt, "%.*s", 4, sortedFileNames[i]+strlen(sortedFileNames[i])-4);
 		isTxtFile = !strcmp(fileExt, ".txt");
@@ -254,7 +252,8 @@ uint lsNote(DIR* notesDir, char* notesDirName) {
 			sortedFileNames[i] = NULL;
 		}
 	}
-	// Start at 2 to hide "." and ".."
+
+	// Print file names. Start at 2 to hide "." and ".."
 	for (uint i=2; i < numOfFiles; i++) {
 		if (sortedFileNames[i]) {
 			puts(sortedFileNames[i]);
@@ -263,13 +262,19 @@ uint lsNote(DIR* notesDir, char* notesDirName) {
 	return 0;
 }
 
-uint editNote(char* fileArg1Name) {
+uint editNote(argv, notesDirPath) {
+	if ( argc > 3) {
+		fputs("ERROR: Too many arguments to subcommand 'edit'", stderr);
+		return 3;
+	}
+	char* notePath = malloc((strlen(argv[2])+strlen(notesDirPath)+6)*sizeof(char));
+	
 	char* editor = getenv("EDITOR");
 	if (editor == NULL) {
-		puts("ERROR: environment variable 'EDITOR' not set");
+		fputs("ERROR: environment variable 'EDITOR' not set", stderr);
 		return 1;
 	}
-	char* editComm = malloc((strlen(editor)+strlen(fileArg1Name)+2)*sizeof(char));
-	sprintf(editComm, "%s \"%s\"", editor, fileArg1Name);
+	char* editComm = malloc((strlen(editor)+strlen(notePath)+2)*sizeof(char));
+	sprintf(editComm, "%s \"%s\"", editor, notePath);
 	return system(editComm);
 }
