@@ -13,29 +13,28 @@ typedef unsigned long ulong;
 // used with a switch statement
 enum comm {
 	helpComm=536744u, lsComm=620u, addComm=4225u, editComm=664709u, 
-	rmComm=434u, cpComm=515u, mvComm=717u, /*showComm=769299u,*/
+	rmComm=434u, cpComm=515u, mvComm=717u,
 	mkdirComm=19173741u, rmdirComm=19173810u
 };
 
 // Function prototype declarations
 char** sortStrArray(char** inArr, uint numOfStrings);
-// char* fullPathOfFileName(char* fileName, char* notesDirPath);
 void printHelp();
 uint showNote(char* notePath);
 uint lsNote(int argc, char** argv, char* notesDirPath);
-// uint addNote();
-uint editNote(char* fileArg1Name);
-// uint rmNote();
-// uint cpNote();
-// uint mvNote();
-// uint mkNoteDir();
-// uint rmNoteDir();
+uint addNote(int argc, char** argv, char* notesDirPath);
+uint editNote(int argc, char** argv, char* notesDirPath);
+uint rmNote(int argc, char** argv, char* notesDirPath);
+uint cpNote(int argc, char** argv, char* notesDirPath, uint subComm);
+uint mkNoteDir(int argc, char** argv, char* notesDirPath);
+uint rmNoteDir(int argc, char** argv, char* notesDirPath);
 
 int main(int argc, char** argv) {
 	uint	subComm			= helpComm;
 	char*	homeDirPath		= NULL;
 	char*	notesDirPath	= NULL;
-	struct	stat statBuf; 
+	char* filePath = NULL;
+	struct	stat statBuf;
 
 	#ifndef _WIN32
 	homeDirPath = getenv("HOME");
@@ -69,42 +68,42 @@ int main(int argc, char** argv) {
 		subComm = alpha2int(argv[1]);
 	}
 	else if ( argc > 4 ) {
-		fputs("ERROR: too many arguments", stderr);
+		fputs("ERROR: too many arguments\n", stderr);
 	}
 	switch (subComm) {
 		case helpComm:
 			printHelp();
 			break;
 		case lsComm:
-			lsNote(argv, notesDirPath);
+			lsNote(argc, argv, notesDirPath);
 			break;
 		case addComm:
-			printf("addNote()\n");
+			addNote(argc, argv, notesDirPath);
 			break;
 		case editComm:
-			editNote(argv, notesDirPath);
+			editNote(argc, argv, notesDirPath);
 			break;
 		case rmComm:
-			printf("rmNote()\n");
+			rmNote(argc, argv, notesDirPath);
 			break;
 		case cpComm:
-			printf("cpNote()\n");
+			cpNote(argc, argv, notesDirPath, subComm);
 			break;
 		case mvComm:
-			printf("mvNote()\n");
+			cpNote(argc, argv, notesDirPath, subComm); // cpNote() will remove the source note if the subcommand is "mv"
 			break;
 		case mkdirComm:
-			printf("mkNoteDir()\n");
+			mkNoteDir(argc, argv, notesDirPath);
 			break;
 		case rmdirComm:
-			printf("rmNoteDir()\n");
+			rmNoteDir(argc, argv, notesDirPath);
 			break;
 		default:
 			// First argument isn't a subcommand. Is it a file?
-			char* filePath = malloc((strlen(notesDirPath)+strlen(argv[1])+6)*sizeof(char));
+			filePath = malloc((strlen(notesDirPath)+strlen(argv[1])+6)*sizeof(char));
 			sprintf(filePath, "%s/%s.txt", notesDirPath, argv[1]);
 			if ( stat(filePath, &statBuf) == 0 ) {
-				showNote(filePath)
+				showNote(filePath);
 			}
 			else printHelp();
 			break;
@@ -155,22 +154,32 @@ void printHelp() {
 
 uint showNote(char* notePath) {
 	char* noteContent = NULL;
-	FILE* noteFile = fopen(notePath, "r+");
+	FILE* noteFile = fopen(notePath, "r");
 	ulong length = 0;
 	ulong bytesRead = 0;
+	ulong numOfCR = 0;
 	if (noteFile) {
 		fseek(noteFile, 0, SEEK_END);
 		length = ftell(noteFile);
 		fseek(noteFile, 0, SEEK_SET);
 		noteContent = malloc(length+1);
-		if (noteContent) {
-			bytesRead = fread (noteContent, 1, length, noteFile);
-			noteContent[length]='\0';
+		// if (noteContent) {
+		// 	bytesRead = fread(noteContent, sizeof(char), length, noteFile);
+		// 	noteContent[length]='\0';
+		// }
+		for ( uint i = 0; i < length; i++ ) {
+			noteContent[i] = fgetc(noteFile);
+			if (noteContent[i] == '\r') {
+				length--;
+				noteContent[i] = fgetc(noteFile);
+			}
 		}
+		noteContent[length] = '\0';
 		fclose (noteFile);
 	}
 	fputs(noteContent, stdout);
-	return (uint)(length-bytesRead);
+
+	return 0;
 }
 
 uint lsNote(int argc, char** argv, char* notesDirPath) {
@@ -188,23 +197,24 @@ uint lsNote(int argc, char** argv, char* notesDirPath) {
 	if ( argc == 3 ) {
 		lsDir = malloc((strlen(notesDirPath)+strlen(argv[2])+2)*sizeof(char));
 		sprintf(lsDir, "%s/%s", notesDirPath, argv[2]);
-		if ( stat(lsDir, statBuf) != 0 ) {
-			fprintf(stderr, "ERROR: Cannot open directory '%s'", lsDir);
+		if ( stat(lsDir, &statBuf) != 0 ) {
+			fprintf(stderr, "ERROR: Cannot open directory '%s'\n", lsDir);
 			return 2;
 		}
 	}
 	else if ( argc > 3 ) {
-		fputs("ERROR: Too many arguments to subcommand 'ls'", stderr);
+		fputs("ERROR: Too many arguments to subcommand 'ls'\n", stderr);
 		return 3;
 	}
 	else {
 		lsDir = malloc((strlen(notesDirPath)+1)*sizeof(char));
+		strcpy(lsDir, notesDirPath);
 	}
 
 	// Open the directory to list
 	notesDir = opendir(lsDir);
 	if ( notesDir == NULL ) {
-		fprintf(stderr, "ERROR: Cannot open directory '%s'", lsDir);
+		fprintf(stderr, "ERROR: Cannot open directory '%s'\n", lsDir);
 		return 2;
 	}
 
@@ -262,19 +272,171 @@ uint lsNote(int argc, char** argv, char* notesDirPath) {
 	return 0;
 }
 
-uint editNote(argv, notesDirPath) {
-	if ( argc > 3) {
-		fputs("ERROR: Too many arguments to subcommand 'edit'", stderr);
+uint addNote(int argc, char** argv, char* notesDirPath) {
+	char* notePath = NULL;
+	FILE* noteFile = NULL;
+
+	if ( argc > 4 ) {
+		fputs("ERROR: Too many arguments to subcommand 'add'\n", stderr);
 		return 3;
 	}
-	char* notePath = malloc((strlen(argv[2])+strlen(notesDirPath)+6)*sizeof(char));
+	else if ( argc < 4 ) {
+		fputs("ERROR: 'add' requires a note name argument and a string to add\n", stderr);
+		return 3;
+	}
+
+	notePath = malloc((strlen(notesDirPath)+strlen(argv[2])+6)*sizeof(char));
+	sprintf(notePath, "%s/%s.txt", notesDirPath, argv[2]);
+	noteFile = fopen(notePath, "a+");
+	if ( noteFile == NULL ) {
+		fprintf(stderr, "ERROR: failed to open file '%s'\n", notePath);
+		return 2;
+	}
+	fseek(noteFile, -1, SEEK_END);
+	char lastChar = fgetc(noteFile);
+	fseek(noteFile, 0, SEEK_END);
+	if ( lastChar == '\n' ) {
+		fprintf(noteFile, "%s\n", argv[3]);
+	}
+	else {
+		fprintf(noteFile, "\n%s\n", argv[3]);
+	}
+	return 0;
+}
+
+uint editNote(int argc, char** argv, char* notesDirPath) {
+	if ( argc > 3 ) {
+		fputs("ERROR: Too many arguments to subcommand 'edit'\n", stderr);
+		return 3;
+	}
+	else if ( argc < 3 ) {
+		fputs("ERROR: 'edit' requires a note name argument\n", stderr);
+		return 3;
+	}
+	
+	char* notePath = malloc((strlen(notesDirPath)+strlen(argv[2])+6)*sizeof(char));
+	sprintf(notePath, "%s/%s.txt", notesDirPath, argv[2]);
 	
 	char* editor = getenv("EDITOR");
 	if (editor == NULL) {
-		fputs("ERROR: environment variable 'EDITOR' not set", stderr);
+		fputs("ERROR: environment variable 'EDITOR' not set\n", stderr);
 		return 1;
 	}
-	char* editComm = malloc((strlen(editor)+strlen(notePath)+2)*sizeof(char));
+	char* editComm = malloc((strlen(editor)+strlen(notePath)+3)*sizeof(char));
 	sprintf(editComm, "%s \"%s\"", editor, notePath);
 	return system(editComm);
+}
+
+uint rmNote(int argc, char** argv, char* notesDirPath) {
+	if ( argc > 3 ) {
+		fputs("ERROR: Too many arguments to subcommand 'rm'\n", stderr);
+		return 3;
+	}
+	else if ( argc < 3 ) {
+		fputs("ERROR: 'rm' requires a note name argument\n", stderr);
+		return 3;
+	}
+
+	char* notePath = malloc((strlen(notesDirPath)+strlen(argv[2])+6)*sizeof(char));
+	sprintf(notePath, "%s/%s.txt", notesDirPath, argv[2]);
+	return remove(notePath);
+}
+
+uint cpNote(int argc, char** argv, char* notesDirPath, uint subComm) {
+	if ( argc > 4 ) {
+		fputs("ERROR: Too many arguments to subcommand 'mv'\n", stderr);
+		return 3;
+	}
+	else if ( argc < 4 ) {
+		fputs("ERROR: 'mv' requires two note name arguments\n", stderr);
+		return 3;
+	}
+
+	char* srcNotePath = malloc((strlen(notesDirPath)+strlen(argv[2])+6)*sizeof(char));
+	sprintf(srcNotePath, "%s/%s.txt", notesDirPath, argv[2]);
+	char* destNotePath = malloc((strlen(notesDirPath)+strlen(argv[3])+6)*sizeof(char));
+	sprintf(destNotePath, "%s/%s.txt", notesDirPath, argv[3]);
+	char* noteContent = NULL;
+	FILE* srcNoteFile = NULL;
+	FILE* destNoteFile = NULL;
+	struct stat statBuf;
+
+	if ( stat(srcNotePath, &statBuf) != 0 ) {
+		fprintf(stderr, "ERROR: file '%s' does not exist\n", srcNotePath);
+		return 3;
+	}
+	if ( stat(destNotePath, &statBuf) == 0 ) {
+		fprintf(stderr, "ERROR: destination file '%s' already exists\n", destNotePath);
+		return 3;
+	}
+
+	srcNoteFile = fopen(srcNotePath, "r+");
+	ulong length = 0;
+	ulong bytesRead = 0;
+	if (srcNoteFile) {
+		fseek(srcNoteFile, 0, SEEK_END);
+		length = ftell(srcNoteFile);
+		fseek(srcNoteFile, 0, SEEK_SET);
+		noteContent = malloc(length+1);
+		if (noteContent) {
+			bytesRead = fread(noteContent, sizeof(char), length, srcNoteFile);
+			noteContent[length]='\0';
+		}
+		fclose (srcNoteFile);
+	}
+	destNoteFile = fopen(destNotePath, "w");
+	if ( destNoteFile == NULL ) {
+		fputs("ERROR: failed to create destination file\n", stderr);
+		return 2;
+	}
+	if ( fputs(noteContent, destNoteFile) < 0 ) {
+		fputs("ERROR: failed to write destination file\n", stderr);
+		return 2;
+	}
+	fclose(destNoteFile);
+	if ( subComm == mvComm ) remove(srcNotePath);
+	return 0;
+}
+
+uint mkNoteDir(int argc, char** argv, char* notesDirPath) {
+	if ( argc > 3 ) {
+		fputs("ERROR: Too many arguments to subcommand 'mkdir'\n", stderr);
+		return 3;
+	}
+	else if ( argc < 3 ) {
+		fputs("ERROR: 'mkdir' requires a new directory name argument\n", stderr);
+		return 3;
+	}
+	
+	char* newDirPath = malloc((strlen(notesDirPath)+strlen(argv[2])+1)*sizeof(char));
+	sprintf(newDirPath, "%s/%s", notesDirPath, argv[2]);
+
+	return mkdir(newDirPath);
+}
+
+uint rmNoteDir(int argc, char** argv, char* notesDirPath) {
+	if ( argc > 3 ) {
+		fputs("ERROR: Too many arguments to subcommand 'rmdir'\n", stderr);
+		return 3;
+	}
+	else if ( argc < 3 ) {
+		fputs("ERROR: 'rmdir' requires a directory name argument\n", stderr);
+		return 3;
+	}
+	
+	struct stat statBuf;
+	char* rmDirPath = malloc((strlen(notesDirPath)+strlen(argv[2])+1)*sizeof(char));
+	sprintf(rmDirPath, "%s/%s", notesDirPath, argv[2]);
+
+	if ( stat(rmDirPath, &statBuf) != 0 ) {
+		fprintf(stderr, "ERROR: directory '%s' does not exist\n", rmDirPath);
+		return 3;
+	}
+
+	int removed = rmdir(rmDirPath);
+	if ( ! (removed == 0) ) {
+		fprintf(stderr, "ERROR: failed to remove '%s'. It may be non-empty.\n", rmDirPath);
+		return 2;
+	}
+	return 0;
 }
