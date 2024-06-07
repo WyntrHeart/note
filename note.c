@@ -163,10 +163,6 @@ uint showNote(char* notePath) {
 		length = ftell(noteFile);
 		fseek(noteFile, 0, SEEK_SET);
 		noteContent = malloc(length+1);
-		// if (noteContent) {
-		// 	bytesRead = fread(noteContent, sizeof(char), length, noteFile);
-		// 	noteContent[length]='\0';
-		// }
 		for ( uint i = 0; i < length; i++ ) {
 			noteContent[i] = fgetc(noteFile);
 			if (noteContent[i] == '\r') {
@@ -356,43 +352,36 @@ uint cpNote(int argc, char** argv, char* notesDirPath, uint subComm) {
 	sprintf(srcNotePath, "%s/%s.txt", notesDirPath, argv[2]);
 	char* destNotePath = malloc((strlen(notesDirPath)+strlen(argv[3])+6)*sizeof(char));
 	sprintf(destNotePath, "%s/%s.txt", notesDirPath, argv[3]);
-	char* noteContent = NULL;
+	// char* noteContent = NULL;
+	// ulong length = 0;
+	int c = '\0'; // Character buffer to copy contents of file. int instead of char to fit EOF
 	FILE* srcNoteFile = NULL;
 	FILE* destNoteFile = NULL;
 	struct stat statBuf;
 
 	if ( stat(srcNotePath, &statBuf) != 0 ) {
-		fprintf(stderr, "ERROR: file '%s' does not exist\n", srcNotePath);
+		fprintf(stderr, "ERROR: source file '%s' does not exist\n", srcNotePath);
 		return 3;
 	}
 	if ( stat(destNotePath, &statBuf) == 0 ) {
 		fprintf(stderr, "ERROR: destination file '%s' already exists\n", destNotePath);
 		return 3;
 	}
-
-	srcNoteFile = fopen(srcNotePath, "r+");
-	ulong length = 0;
-	ulong bytesRead = 0;
-	if (srcNoteFile) {
-		fseek(srcNoteFile, 0, SEEK_END);
-		length = ftell(srcNoteFile);
-		fseek(srcNoteFile, 0, SEEK_SET);
-		noteContent = malloc(length+1);
-		if (noteContent) {
-			bytesRead = fread(noteContent, sizeof(char), length, srcNoteFile);
-			noteContent[length]='\0';
-		}
-		fclose (srcNoteFile);
+	srcNoteFile = fopen(srcNotePath, "r");
+	if ( !srcNoteFile ) {
+		fprintf(stderr, "ERROR: failed to open file '%s'\n", srcNotePath);
+		return 2;
 	}
 	destNoteFile = fopen(destNotePath, "w");
 	if ( destNoteFile == NULL ) {
 		fputs("ERROR: failed to create destination file\n", stderr);
 		return 2;
 	}
-	if ( fputs(noteContent, destNoteFile) < 0 ) {
-		fputs("ERROR: failed to write destination file\n", stderr);
-		return 2;
+	
+	while ( (c = fgetc(srcNoteFile)) != EOF ) {
+		fputc(c, destNoteFile);
 	}
+	fclose(srcNoteFile);
 	fclose(destNoteFile);
 	if ( subComm == mvComm ) remove(srcNotePath);
 	return 0;
