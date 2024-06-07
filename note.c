@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,7 +64,7 @@ int main(int argc, char** argv) {
 	}
 	strcat(notesDirPath, "/documents/notes");
 	if ( stat(notesDirPath, &statBuf) != 0 ) {
-		if ( mkdir(notesDirPath) != 0 ) {
+		if ( mkdir(notesDirPath, 775) != 0 ) {
 			fprintf(stderr, "ERROR: directory '%s' does not exist and cannot be created\n", notesDirPath);
 		}
 	} 
@@ -161,8 +162,6 @@ uint showNote(char* notePath) {
 	char* noteContent = NULL;
 	FILE* noteFile = fopen(notePath, "r");
 	ulong length = 0;
-	ulong bytesRead = 0;
-	ulong numOfCR = 0;
 	if (noteFile) {
 		fseek(noteFile, 0, SEEK_END);
 		length = ftell(noteFile);
@@ -405,7 +404,7 @@ uint mkNoteDir(int argc, char** argv, char* notesDirPath) {
 	char* newDirPath = malloc((strlen(notesDirPath)+strlen(argv[2])+1)*sizeof(char));
 	sprintf(newDirPath, "%s/%s", notesDirPath, argv[2]);
 
-	return mkdir(newDirPath);
+	return mkdir(newDirPath, 775);
 }
 
 uint rmNoteDir(int argc, char** argv, char* notesDirPath) {
