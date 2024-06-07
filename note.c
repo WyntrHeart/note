@@ -6,6 +6,11 @@
 #include <sys/stat.h>
 #include "./include/alpha2int.h"
 
+// fix for Windows version of mkdir() function
+#if (defined(_WIN32) || defined(__WIN32__))
+#define mkdir(A, B) mkdir(A)
+#endif
+
 typedef unsigned int uint;
 typedef unsigned long ulong;
 
