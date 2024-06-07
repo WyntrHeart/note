@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 	uint	subComm			= helpComm;
 	char*	homeDirPath		= NULL;
 	char*	notesDirPath	= NULL;
-	char* filePath = NULL;
+	char* filePath			= NULL;
 	struct	stat statBuf;
 
 	#ifndef _WIN32
@@ -62,6 +62,11 @@ int main(int argc, char** argv) {
 		}
 	}
 	strcat(notesDirPath, "/documents/notes");
+	if ( stat(notesDirPath, &statBuf) != 0 ) {
+		if ( mkdir(notesDirPath) != 0 ) {
+			fprintf(stderr, "ERROR: directory '%s' does not exist and cannot be created\n", notesDirPath);
+		}
+	} 
 
 	// Read first argument as subcommand
 	if ( argc > 1 ) {
