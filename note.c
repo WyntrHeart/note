@@ -1,4 +1,6 @@
+#ifndef _WIN32 
 #include <unistd.h>
+#endif
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -300,7 +302,7 @@ uint addNote(int argc, char** argv, char* notesDirPath) {
 	fseek(noteFile, -1, SEEK_END);
 	char lastChar = fgetc(noteFile);
 	fseek(noteFile, 0, SEEK_END);
-	if ( lastChar == '\n' ) {
+	if ( lastChar == '\n' || lastChar == EOF ) {
 		fprintf(noteFile, "%s\n", argv[3]);
 	}
 	else {
@@ -327,9 +329,10 @@ uint editNote(int argc, char** argv, char* notesDirPath) {
 		fputs("ERROR: environment variable 'EDITOR' not set\n", stderr);
 		return 1;
 	}
-	char* editComm = malloc((strlen(editor)+strlen(notePath)+3)*sizeof(char));
+	char* editComm = malloc((strlen(editor)+strlen(notePath)+4)*sizeof(char));
 	sprintf(editComm, "%s \"%s\"", editor, notePath);
-	return system(editComm);
+	system(editComm);
+	return 0;
 }
 
 uint rmNote(int argc, char** argv, char* notesDirPath) {
