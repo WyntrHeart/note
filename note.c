@@ -190,10 +190,10 @@ uint showNote(char* notePath) {
 }
 
 uint lsNote(int argc, char** argv, char* notesDirPath) {
-	DIR* notesDir = NULL;
+	DIR* lsDir = NULL;
 	char** fileNames = NULL;
 	char* statFilePath = NULL;
-	char* lsDir = NULL;
+	char* lsDirPath = NULL;
 	char fileExt[5] = {0,0,0,0,0};
 	struct dirent* entry = NULL;
 	struct stat statBuf;
@@ -202,10 +202,10 @@ uint lsNote(int argc, char** argv, char* notesDirPath) {
 
 	// Check if argument to ls subcommand is a directory
 	if ( argc == 3 ) {
-		lsDir = malloc((strlen(notesDirPath)+strlen(argv[2])+2)*sizeof(char));
-		sprintf(lsDir, "%s/%s", notesDirPath, argv[2]);
-		if ( stat(lsDir, &statBuf) != 0 ) {
-			fprintf(stderr, "ERROR: Cannot open directory '%s'\n", lsDir);
+		lsDirPath = malloc((strlen(notesDirPath)+strlen(argv[2])+2)*sizeof(char));
+		sprintf(lsDirPath, "%s/%s", notesDirPath, argv[2]);
+		if ( stat(lsDirPath, &statBuf) != 0 ) {
+			fprintf(stderr, "ERROR: Cannot open directory '%s'\n", lsDirPath);
 			return 2;
 		}
 	}
@@ -214,27 +214,27 @@ uint lsNote(int argc, char** argv, char* notesDirPath) {
 		return 3;
 	}
 	else {
-		lsDir = malloc((strlen(notesDirPath)+1)*sizeof(char));
-		strcpy(lsDir, notesDirPath);
+		lsDirPath = malloc((strlen(notesDirPath)+1)*sizeof(char));
+		strcpy(lsDirPath, notesDirPath);
 	}
 
 	// Open the directory to list
-	notesDir = opendir(lsDir);
-	if ( notesDir == NULL ) {
-		fprintf(stderr, "ERROR: Cannot open directory '%s'\n", lsDir);
+	lsDir = opendir(lsDirPath);
+	if ( lsDir == NULL ) {
+		fprintf(stderr, "ERROR: Cannot open directory '%s'\n", lsDirPath);
 		return 2;
 	}
 
 	// Count files so we can allocate enough pointers for the filenames
-	while ((entry = readdir(notesDir)) != NULL) {
+	while ((entry = readdir(lsDir)) != NULL) {
 		numOfFiles++;
 	}
 	fileNames = malloc(numOfFiles*sizeof(char*));
 
 	// Reread the dir to record the names
-	rewinddir(notesDir);
+	rewinddir(lsDir);
 	uint i = 0;
-	while ((entry = readdir(notesDir)) != NULL) {
+	while ((entry = readdir(lsDir)) != NULL) {
 		if (entry) {
 			fileNames[i]=malloc((strlen(entry->d_name)+1)*sizeof(char));
 			strcpy(fileNames[i], entry->d_name);
@@ -248,8 +248,8 @@ uint lsNote(int argc, char** argv, char* notesDirPath) {
 	// Filter the file names by type
 	for (uint i = 0; i < numOfFiles; i++) {
 		// Construct full file path for stat()
-		statFilePath = realloc(statFilePath, (strlen(sortedFileNames[i])+strlen(notesDirPath)+1)*sizeof(char));
-		sprintf(statFilePath, "%s/%s", notesDirPath, sortedFileNames[i]);
+		statFilePath = realloc(statFilePath, (strlen(lsDirPath)+strlen(sortedFileNames[i])+2)*sizeof(char));
+		sprintf(statFilePath, "%s/%s", lsDirPath, sortedFileNames[i]);
 		stat(statFilePath, &statBuf);
 		// Check file extension to identify txt files
 		sprintf(fileExt, "%.*s", 4, sortedFileNames[i]+strlen(sortedFileNames[i])-4);
@@ -299,10 +299,12 @@ uint addNote(int argc, char** argv, char* notesDirPath) {
 		fprintf(stderr, "ERROR: failed to open file '%s'\n", notePath);
 		return 2;
 	}
+	fseek(noteFile, 0, SEEK_SET);
+	int firstChar = fgetc(noteFile); // int to fit EOF
 	fseek(noteFile, -1, SEEK_END);
 	char lastChar = fgetc(noteFile);
 	fseek(noteFile, 0, SEEK_END);
-	if ( lastChar == '\n' || lastChar == EOF ) {
+	if ( lastChar == '\n' || firstChar == EOF ) {
 		fprintf(noteFile, "%s\n", argv[3]);
 	}
 	else {
