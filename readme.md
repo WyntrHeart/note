@@ -1,6 +1,6 @@
 # note
 
-A simple cli program to manage plain text notes. Notes are stored in `$HOME/documents/notes` (or `%USERPROFILE%\Documents\notes` on Windows if %HOME% isn't set). The edit subcommand uses the `$EDITOR` environment variable. Tested on Windows 10 and Android 9. *Should* also work on Linux.
+A simple cli program to manage plain text notes. Notes are stored in `$HOME/documents/notes` (or `%USERPROFILE%\Documents\notes` on Windows if '%HOME%' isn't set). The edit subcommand uses the `$EDITOR` environment variable. Tested on Windows 10 and Android 9. *Should* also work on Linux.
 Builds with GCC. MSVC does not work.
 
 **NOTICE**: I am a hobby programmer with no proper education. Please use this software with caution. I am not responsible if it deletes all your bank info, spontaneously combusts your computer, or if reading my awful code causes you to have an aneurysm. Feedback from more knowledgeable programmers would be great.
