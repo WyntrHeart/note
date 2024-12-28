@@ -43,33 +43,35 @@ int main(int argc, char** argv) {
 	char*	notesDirPath	= NULL;
 	char* filePath			= NULL;
 	struct	stat statBuf;
-
-	#ifndef _WIN32
-	homeDirPath = getenv("HOME");
-	if (homeDirPath == NULL) {
-		puts("ERROR: environment variable 'HOME' not set\n");
-		return 1;
-	}
-	#endif
-	#ifdef _WIN32
-	homeDirPath = getenv("HOME");
-	if (homeDirPath == NULL) {
-		homeDirPath = getenv("USERPROFILE");
-	}
-	if (homeDirPath == NULL) {
-		puts("ERROR: environment variables 'HOME' and 'USERPROFILE' not set");
-		return 1;
-	}
-	#endif
-	notesDirPath = malloc((strlen(homeDirPath)+18)*sizeof(char));
-	strcpy(notesDirPath, homeDirPath);
-	// Convert Windows backslashes to normal forward slashes
-	for (uint i = 0; i <= strlen(notesDirPath); i++) {
-		if (notesDirPath[i] == '\\') {
-			notesDirPath[i] = '/';
+	notesDirPath = getenv("NOTE_DIR");
+	if (notesDirPath == NULL) {
+		#ifndef _WIN32
+		homeDirPath = getenv("HOME");
+		if (homeDirPath == NULL) {
+			puts("ERROR: environment variable 'HOME' not set\n");
+			return 1;
 		}
+		#endif
+		#ifdef _WIN32
+		homeDirPath = getenv("HOME");
+		if (homeDirPath == NULL) {
+			homeDirPath = getenv("USERPROFILE");
+		}
+		if (homeDirPath == NULL) {
+			puts("ERROR: environment variables 'HOME' and 'USERPROFILE' not set");
+			return 1;
+		}
+		#endif
+		notesDirPath = malloc((strlen(homeDirPath)+18)*sizeof(char));
+		strcpy(notesDirPath, homeDirPath);
+		// Convert Windows backslashes to normal forward slashes
+		for (uint i = 0; i <= strlen(notesDirPath); i++) {
+			if (notesDirPath[i] == '\\') {
+				notesDirPath[i] = '/';
+			}
+		}
+		strcat(notesDirPath, "/documents/notes");
 	}
-	strcat(notesDirPath, "/documents/notes");
 	if ( stat(notesDirPath, &statBuf) != 0 ) {
 		if ( mkdir(notesDirPath, 775) != 0 ) {
 			fprintf(stderr, "ERROR: directory '%s' does not exist and cannot be created\n", notesDirPath);

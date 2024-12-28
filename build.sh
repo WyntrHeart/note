@@ -1,2 +1,2 @@
-#!/bin/bash
-gcc -Os -o note note.c && echo done
+#!/bin/sh
+gcc -o note note.c && echo "done"
