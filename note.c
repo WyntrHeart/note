@@ -254,7 +254,7 @@ uint lsNote(int argc, char** argv, char* notesDirPath) {
 		sprintf(statFilePath, "%s/%s", lsDirPath, sortedFileNames[i]);
 		stat(statFilePath, &statBuf);
 		// Check file extension to identify txt files
-		sprintf(fileExt, "%.*s", 4, sortedFileNames[i]+strlen(sortedFileNames[i])-4);
+		sprintf(fileExt, "%.4s", sortedFileNames[i]+strlen(sortedFileNames[i])-4);
 		isTxtFile = !strcmp(fileExt, ".txt");
 		// Append a "/" to the names of directories
 		if ( (statBuf.st_mode & S_IFMT) == S_IFDIR) {
@@ -266,14 +266,18 @@ uint lsNote(int argc, char** argv, char* notesDirPath) {
 			sortedFileNames[i][strlen(sortedFileNames[i])-4]='\0';
 		}
 		// Hide files that aren't txt or dir
+		else if (!strcmp(sortedFileNames[i], ".") || !strcmp(sortedFileNames[i], "..")) {
+			free(sortedFileNames[i]);
+			sortedFileNames[i] = NULL;
+		}
 		else {
 			free(sortedFileNames[i]);
 			sortedFileNames[i] = NULL;
 		}
 	}
 
-	// Print file names. Start at 2 to hide "." and ".."
-	for (uint i=2; i < numOfFiles; i++) {
+	// Print file names
+	for (uint i=0; i < numOfFiles; i++) {
 		if (sortedFileNames[i]) {
 			puts(sortedFileNames[i]);
 		}
