@@ -6,18 +6,21 @@ Builds with GCC. *MSVC does not work.*
 
 ```
 usage: note NOTE|SUBCOMMAND [ARG1 [ARG2]]
-    Display NOTE or do SUBCOMMAND
+    Display NOTE or do SUBCOMMAND. Specify notes by name only, 'note' handles
+    file extensions internally.
 subcommands:
-    help   Display this help text
-    ls     List notes and subdirs in note directory. If ARG1 is a
-           subdir list notes/subdirs inside it.
-    add    Append the string ARG2 to a new line at the end of ARG1.txt
-    edit   Open ARG1.txt with $EDITOR
-    rm     Remove ARG1.txt
-    cp     Copy ARG1.txt to ARG2.txt
-    mv     Move or rename ARG1.txt to ARG2.txt
-    mkdir  Create subdir named ARG1
-    rmdir  Remove subdir named ARG1
+    help|h     Display this help text
+    ls         List notes and subdirs in note directory. If ARG1 is a
+               subdir list notes/subdirs inside it.
+    add|a      Append the string ARG2 to a new line at the end of ARG1
+    edit|e     Open ARG1 with $EDITOR
+    clear|clr  Erase contents of ARG1
+    where|w    Print full path to ARG1 (or the note dir if ARG1 is omitted)
+    rm         Remove ARG1
+    cp         Copy ARG1 to ARG2
+    mv         Move/rename ARG1 to ARG2
+    mkdir      Create subdir named ARG1
+    rmdir      Remove subdir named ARG1
 ```
 
 This software is licensed under the GNU GPL version 3
